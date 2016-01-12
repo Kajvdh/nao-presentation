@@ -5,11 +5,65 @@ import argparse
 import motion
 import time
 import almath
+import logger
 
 app = Flask(__name__)
 
 nao_host = "localhost"
 nao_port = 53417
+logger = logger.Logger(4) # Initialize logger with level "debug"
+
+@app.route('/behaviors', methods=['GET'])
+def get_behaviors():
+    logger.debug("get_behaviors() called")
+    managerProxy = ALProxy("ALBehaviorManager", nao_host, nao_port)
+    behaviors = managerProxy.getInstalledBehaviors()
+    return jsonify({"behaviors": behaviors}), 200
+
+@app.route('/behaviors/start', methods=['POST'])
+def start_behavior():
+    logger.debug("start_behavior() called")
+    if not request.json or not 'behavior' in request.json:
+        abort(400)
+    behavior = str(request.json['behavior'])
+    managerProxy = ALProxy("ALBehaviorManager", nao_host, nao_port)
+
+    if (managerProxy.isBehaviorInstalled(behavior)):
+        logger.debug("Behavior "+behavior+" is present on the robot, starting behavior...")
+        managerProxy.post.runBehavior(behavior)
+        return jsonify({"started": behavior}), 200
+    else:
+        logger.debug("Behavior "+behavior+" is NOT present on the robot")
+        return jsonify({"error": "Behavior not found"}), 404
+
+@app.route('/behaviors/stop', methods=['POST'])
+def stop_behavior():
+    logger.debug("stop_behavior() called")
+    if not request.json or not 'behavior' in request.json:
+        abort(400)
+    behavior = str(request.json['behavior'])
+    managerProxy = ALProxy("ALBehaviorManager", nao_host, nao_port)
+
+    if (managerProxy.isBehaviorRunning(behavior)):
+        logger.debug("Behavior "+behavior+" is running on the robot, stopping behavior...")
+        managerProxy.stopBehavior(behavior)
+        return jsonify({"stopped": behavior}), 200
+    else:
+        logger.debug("Behavior "+behavior+" is NOT running on the robot")
+        return jsonify({"error": "Behavior not running"}), 404
+
+@app.route('/behaviors/stop/all', methods=['GET'])
+def stop_behaviors():
+    logger.debug("stop_behaviors() called")
+    managerProxy = ALProxy("ALBehaviorManager", nao_host, nao_port)
+    behaviors = managerProxy.getRunningBehaviors()
+
+    if (len(behaviors) > 0):
+        managerProxy.stopAllBehaviors()
+        return jsonify({"stopped": behaviors}), 200
+    else:
+        return jsonify({"error": "No running behaviors"}), 400
+
 
 @app.route('/')
 def index():
