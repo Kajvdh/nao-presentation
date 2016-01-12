@@ -17,6 +17,13 @@ def greet(name):
     tts.say("Hello "+ str(name) +"!")
     return "I just greeted "+ str(name) +"!", 200
 
+@app.route('/move')
+def move():
+    motion = ALProxy("ALMotion", nao_host, nao_port)
+    motion.moveInit()
+    motion.post.moveTo(1.5, 0, 0)
+    return "Better start running!", 200
+
 robots = [
     {
         'id': 1,
